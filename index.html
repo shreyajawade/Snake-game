@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Snake Game</title>
 
     <style>
@@ -19,18 +19,23 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: 15px;
+            overflow-x: hidden;
         }
 
         .game-container {
             text-align: center;
+            width: 100%;
+            max-width: 550px;
         }
 
         h1 {
-            margin-bottom: 10px;
+            margin: 5px 0 10px;
+            font-size: clamp(26px, 7vw, 36px);
         }
 
         .score-board {
-            font-size: 20px;
+            font-size: clamp(16px, 5vw, 20px);
             margin-bottom: 15px;
         }
 
@@ -39,19 +44,28 @@
             border: 3px solid #555;
             display: block;
             margin: auto;
+            width: min(92vw, 500px);
+            height: min(92vw, 500px);
+            touch-action: none;
         }
 
         .buttons {
-            margin-top: 15px;
+            margin-top: 12px;
         }
 
         button {
-            padding: 10px 20px;
+            padding: 10px 18px;
             font-size: 16px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            margin: 5px;
+            margin: 4px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:active {
+            transform: scale(0.95);
         }
 
         #startBtn {
@@ -70,8 +84,84 @@
         }
 
         .instructions {
-            margin-top: 15px;
+            margin-top: 12px;
             color: #bbb;
+            font-size: 14px;
+        }
+
+        /* Mobile D-pad */
+        .mobile-controls {
+            display: grid;
+            grid-template-columns: 60px 60px 60px;
+            grid-template-rows: 60px 60px 60px;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            margin: 15px auto 5px;
+            user-select: none;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            margin: 0;
+            padding: 0;
+            background: #333;
+            color: white;
+            border: 2px solid #555;
+            border-radius: 12px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:active {
+            background: #555;
+        }
+
+        .up {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .down {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        @media (min-width: 700px) {
+            .mobile-controls {
+                display: none;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .mobile-controls {
+                grid-template-columns: 52px 52px 52px;
+                grid-template-rows: 52px 52px 52px;
+            }
+
+            .control-btn {
+                width: 52px;
+                height: 52px;
+                font-size: 24px;
+            }
+
+            button {
+                padding: 9px 14px;
+                font-size: 15px;
+            }
         }
     </style>
 </head>
@@ -96,12 +186,19 @@
         <button id="restartBtn">Restart</button>
     </div>
 
+    <!-- Mobile controls -->
+    <div class="mobile-controls">
+        <button class="control-btn up" id="upBtn">⬆️</button>
+        <button class="control-btn left" id="leftBtn">⬅️</button>
+        <button class="control-btn right" id="rightBtn">➡️</button>
+        <button class="control-btn down" id="downBtn">⬇️</button>
+    </div>
+
     <div class="instructions">
-        Use ⬆️ ⬇️ ⬅️ ➡️ arrow keys to control the snake
+        💻 Use arrow keys on computer &nbsp;|&nbsp; 📱 Use buttons on phone
     </div>
 
 </div>
-
 
 <script>
 
@@ -115,6 +212,11 @@
     const startBtn = document.getElementById("startBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const restartBtn = document.getElementById("restartBtn");
+
+    const upBtn = document.getElementById("upBtn");
+    const downBtn = document.getElementById("downBtn");
+    const leftBtn = document.getElementById("leftBtn");
+    const rightBtn = document.getElementById("rightBtn");
 
 
     // Game settings
@@ -168,53 +270,66 @@
         clearInterval(gameLoop);
 
         gameLoop = setInterval(updateGame, 100);
+
+        drawGame();
     }
 
 
-   // Create apple at random position
-function createFood() {
+    // Create apple at random position
+    function createFood() {
 
-    food = {
-        x: Math.floor(Math.random() * tileCount),
-        y: Math.floor(Math.random() * tileCount)
-    };
+        food = {
+            x: Math.floor(Math.random() * tileCount),
+            y: Math.floor(Math.random() * tileCount)
+        };
 
-    // Make sure apple does not appear inside snake
-    for (let part of snake) {
+        // Make sure apple does not appear inside snake
+        for (let part of snake) {
 
-        if (part.x === food.x && part.y === food.y) {
+            if (part.x === food.x && part.y === food.y) {
+                createFood();
+                return;
+            }
+        }
+
+        // Make sure apple does not appear on watermelon
+        if (
+            watermelon !== null &&
+            food.x === watermelon.x &&
+            food.y === watermelon.y
+        ) {
             createFood();
             return;
         }
     }
-}
 
 
-// Create watermelon at random position
-function createWatermelon() {
+    // Create watermelon at random position
+    function createWatermelon() {
 
-    watermelon = {
-        x: Math.floor(Math.random() * tileCount),
-        y: Math.floor(Math.random() * tileCount)
-    };
+        watermelon = {
+            x: Math.floor(Math.random() * tileCount),
+            y: Math.floor(Math.random() * tileCount)
+        };
 
-    // Make sure watermelon does not appear inside snake or on apple
-    for (let part of snake) {
+        // Make sure watermelon does not appear inside snake
+        for (let part of snake) {
 
-        if (part.x === watermelon.x && part.y === watermelon.y) {
+            if (part.x === watermelon.x && part.y === watermelon.y) {
+                createWatermelon();
+                return;
+            }
+        }
+
+        // Make sure watermelon does not appear on apple
+        if (
+            watermelon.x === food.x &&
+            watermelon.y === food.y
+        ) {
             createWatermelon();
             return;
         }
     }
-
-    if (
-        watermelon.x === food.x &&
-        watermelon.y === food.y
-    ) {
-        createWatermelon();
-        return;
-    }
-}
 
 
     // Update game
@@ -222,9 +337,8 @@ function createWatermelon() {
 
         // Stop updating when game is paused
         if (!gameRunning || gamePaused) {
-    return;
-}
-        
+            return;
+        }
 
         const head = {
             x: snake[0].x + dx,
@@ -263,18 +377,19 @@ function createWatermelon() {
         snake.unshift(head);
 
 
-        // Check if snake ate food
+        // Check if snake ate apple
         if (
             head.x === food.x &&
             head.y === food.y
         ) {
 
             score++;
-applesEaten++;
+            applesEaten++;
 
-if (applesEaten % 5 === 0 && watermelon === null) {
-    createWatermelon();
-}
+            // Every 5 apples, create a watermelon
+            if (applesEaten % 5 === 0 && watermelon === null) {
+                createWatermelon();
+            }
 
             scoreDisplay.textContent = score;
 
@@ -291,25 +406,38 @@ if (applesEaten % 5 === 0 && watermelon === null) {
             }
 
             createFood();
-} else if (
-    watermelon !== null &&
-    head.x === watermelon.x &&
-    head.y === watermelon.y
-) {
 
-    // Snake ate watermelon
-    score++;
+        } else if (
+            watermelon !== null &&
+            head.x === watermelon.x &&
+            head.y === watermelon.y
+        ) {
 
-    scoreDisplay.textContent = score;
+            // Snake ate watermelon
+            score++;
 
-    // Remove watermelon
-    watermelon = null;
+            scoreDisplay.textContent = score;
 
-} else {
+            if (score > highScore) {
 
-    // Remove tail if no food was eaten
-    snake.pop();
-}
+                highScore = score;
+
+                highScoreDisplay.textContent = highScore;
+
+                localStorage.setItem(
+                    "snakeHighScore",
+                    highScore
+                );
+            }
+
+            // Remove watermelon
+            watermelon = null;
+
+        } else {
+
+            // Remove tail if no food was eaten
+            snake.pop();
+        }
 
         drawGame();
     }
@@ -370,15 +498,17 @@ if (applesEaten % 5 === 0 && watermelon === null) {
             food.y * gridSize + gridSize / 2
         );
 
-// Draw watermelon 🍉 if it exists
-if (watermelon !== null) {
 
-    ctx.fillText(
-        "🍉",
-        watermelon.x * gridSize + gridSize / 2,
-        watermelon.y * gridSize + gridSize / 2
-    );
-}
+        // Draw watermelon 🍉 if it exists
+        if (watermelon !== null) {
+
+            ctx.fillText(
+                "🍉",
+                watermelon.x * gridSize + gridSize / 2,
+                watermelon.y * gridSize + gridSize / 2
+            );
+        }
+
 
         // Draw snake
         snake.forEach((part, index) => {
@@ -419,7 +549,6 @@ if (watermelon !== null) {
 
             ctx.fill();
 
-
             ctx.beginPath();
 
             ctx.arc(
@@ -447,7 +576,6 @@ if (watermelon !== null) {
             );
 
             ctx.fill();
-
 
             ctx.beginPath();
 
@@ -477,7 +605,6 @@ if (watermelon !== null) {
 
             ctx.fill();
 
-
             ctx.beginPath();
 
             ctx.arc(
@@ -506,7 +633,6 @@ if (watermelon !== null) {
 
             ctx.fill();
 
-
             ctx.beginPath();
 
             ctx.arc(
@@ -519,62 +645,64 @@ if (watermelon !== null) {
 
             ctx.fill();
         }
-// 👅 White forked tongue
-const centerX = head.x * gridSize + gridSize / 2;
-const centerY = head.y * gridSize + gridSize / 2;
 
-ctx.strokeStyle = "white";
-ctx.lineWidth = 2;
-ctx.lineCap = "round";
 
-ctx.beginPath();
+        // 👅 White forked tongue
+        const centerX = head.x * gridSize + gridSize / 2;
+        const centerY = head.y * gridSize + gridSize / 2;
 
-if (dx > 0) {
-    // Right
-    ctx.moveTo(centerX + 6, centerY);
-    ctx.lineTo(centerX + 13, centerY);
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
 
-    ctx.moveTo(centerX + 13, centerY);
-    ctx.lineTo(centerX + 16, centerY - 3);
+        ctx.beginPath();
 
-    ctx.moveTo(centerX + 13, centerY);
-    ctx.lineTo(centerX + 16, centerY + 3);
+        if (dx > 0) {
+            // Right
+            ctx.moveTo(centerX + 6, centerY);
+            ctx.lineTo(centerX + 13, centerY);
 
-} else if (dx < 0) {
-    // Left
-    ctx.moveTo(centerX - 6, centerY);
-    ctx.lineTo(centerX - 13, centerY);
+            ctx.moveTo(centerX + 13, centerY);
+            ctx.lineTo(centerX + 16, centerY - 3);
 
-    ctx.moveTo(centerX - 13, centerY);
-    ctx.lineTo(centerX - 16, centerY - 3);
+            ctx.moveTo(centerX + 13, centerY);
+            ctx.lineTo(centerX + 16, centerY + 3);
 
-    ctx.moveTo(centerX - 13, centerY);
-    ctx.lineTo(centerX - 16, centerY + 3);
+        } else if (dx < 0) {
+            // Left
+            ctx.moveTo(centerX - 6, centerY);
+            ctx.lineTo(centerX - 13, centerY);
 
-} else if (dy > 0) {
-    // Down
-    ctx.moveTo(centerX, centerY + 6);
-    ctx.lineTo(centerX, centerY + 13);
+            ctx.moveTo(centerX - 13, centerY);
+            ctx.lineTo(centerX - 16, centerY - 3);
 
-    ctx.moveTo(centerX, centerY + 13);
-    ctx.lineTo(centerX - 3, centerY + 16);
+            ctx.moveTo(centerX - 13, centerY);
+            ctx.lineTo(centerX - 16, centerY + 3);
 
-    ctx.moveTo(centerX, centerY + 13);
-    ctx.lineTo(centerX + 3, centerY + 16);
+        } else if (dy > 0) {
+            // Down
+            ctx.moveTo(centerX, centerY + 6);
+            ctx.lineTo(centerX, centerY + 13);
 
-} else if (dy < 0) {
-    // Up
-    ctx.moveTo(centerX, centerY - 6);
-    ctx.lineTo(centerX, centerY - 13);
+            ctx.moveTo(centerX, centerY + 13);
+            ctx.lineTo(centerX - 3, centerY + 16);
 
-    ctx.moveTo(centerX, centerY - 13);
-    ctx.lineTo(centerX - 3, centerY - 16);
+            ctx.moveTo(centerX, centerY + 13);
+            ctx.lineTo(centerX + 3, centerY + 16);
 
-    ctx.moveTo(centerX, centerY - 13);
-    ctx.lineTo(centerX + 3, centerY - 16);
-}
+        } else if (dy < 0) {
+            // Up
+            ctx.moveTo(centerX, centerY - 6);
+            ctx.lineTo(centerX, centerY - 13);
 
-ctx.stroke();
+            ctx.moveTo(centerX, centerY - 13);
+            ctx.lineTo(centerX - 3, centerY - 16);
+
+            ctx.moveTo(centerX, centerY - 13);
+            ctx.lineTo(centerX + 3, centerY - 16);
+        }
+
+        ctx.stroke();
     }
 
 
@@ -623,36 +751,65 @@ ctx.stroke();
     }
 
 
-    // Keyboard controls
-    document.addEventListener("keydown", function(event) {
+    // Change direction
+    function changeDirection(newDx, newDy) {
 
         if (!gameRunning || gamePaused) {
             return;
         }
 
-
         // Prevent opposite direction
-        if (event.key === "ArrowUp" && dy !== 1) {
+        if (newDx === 1 && dx === -1) return;
+        if (newDx === -1 && dx === 1) return;
+        if (newDy === 1 && dy === -1) return;
+        if (newDy === -1 && dy === 1) return;
 
-            dx = 0;
-            dy = -1;
+        dx = newDx;
+        dy = newDy;
+    }
 
-        } else if (event.key === "ArrowDown" && dy !== -1) {
 
-            dx = 0;
-            dy = 1;
+    // Keyboard controls
+    document.addEventListener("keydown", function(event) {
 
-        } else if (event.key === "ArrowLeft" && dx !== 1) {
+        if (event.key === "ArrowUp") {
+            event.preventDefault();
+            changeDirection(0, -1);
 
-            dx = -1;
-            dy = 0;
+        } else if (event.key === "ArrowDown") {
+            event.preventDefault();
+            changeDirection(0, 1);
 
-        } else if (event.key === "ArrowRight" && dx !== -1) {
+        } else if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            changeDirection(-1, 0);
 
-            dx = 1;
-            dy = 0;
+        } else if (event.key === "ArrowRight") {
+            event.preventDefault();
+            changeDirection(1, 0);
         }
     });
+
+
+    // Mobile controls
+    function addTouchControl(button, newDx, newDy) {
+
+        button.addEventListener("touchstart", function(event) {
+            event.preventDefault();
+            changeDirection(newDx, newDy);
+        }, { passive: false });
+
+        // Also allows mouse clicks when testing on a computer
+        button.addEventListener("click", function(event) {
+            event.preventDefault();
+            changeDirection(newDx, newDy);
+        });
+    }
+
+    addTouchControl(upBtn, 0, -1);
+    addTouchControl(downBtn, 0, 1);
+    addTouchControl(leftBtn, -1, 0);
+    addTouchControl(rightBtn, 1, 0);
 
 
     // Start button
@@ -666,28 +823,26 @@ ctx.stroke();
 
 
     // Pause / Resume button
-pauseBtn.addEventListener("click", function() {
+    pauseBtn.addEventListener("click", function() {
 
-    if (!gameRunning) {
-        return;
-    }
+        if (!gameRunning) {
+            return;
+        }
 
-    gamePaused = !gamePaused;
+        gamePaused = !gamePaused;
 
-    if (gamePaused) {
+        if (gamePaused) {
 
-        // Just pause the game
-        pauseBtn.textContent = "Resume";
+            pauseBtn.textContent = "Resume";
 
-    } else {
+        } else {
 
-        // Resume the game
-        pauseBtn.textContent = "Pause";
+            pauseBtn.textContent = "Pause";
 
-        drawGame();
-    }
+            drawGame();
+        }
 
-});
+    });
 
 
     // Restart button
